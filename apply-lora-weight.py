@@ -1,7 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 import torch
-from huggingface_hub import HfApi, login
 import shutil
 
 import os
