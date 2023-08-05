@@ -5,6 +5,7 @@ import torch
 import argparse
 import json
 
+# Based on https://github.com/TehVenomm/LM_Transformers_BlockMerge/blob/main/LM_BlockMerge.py
 
 #mixer output settings
 
