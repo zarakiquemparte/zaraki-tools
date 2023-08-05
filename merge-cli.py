@@ -3,7 +3,6 @@ import shutil
 from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaConfig
 import torch
 import argparse
-from huggingface_hub import HfApi, login
 import json
 
 
