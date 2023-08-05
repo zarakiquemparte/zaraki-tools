@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>model_rate Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <style>
+    .container{
+      width: 800px;
+    }
+    .vertical_range {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 10px;
+      padding-left: 16px;
+      height: 70px;
+    }
+    .temp_container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+    input.form-control.temp_value {
+        padding: 0;
+        font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Model Rate Generator</h1>
+    <div class="row">
+      <div class="form-group col-md-6">
+        <label for="model_rate">Model Rate</label>
+        <input type="number" class="form-control" id="model_rate" step="0.01" placeholder="Enter model rate" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="num_layers">Number of layers</label>
+        <input type="number" class="form-control" id="num_layers" placeholder="Enter number of layers" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="cap">Cap</label>
+        <input type="number" step="0.01" class="form-control" id="cap" placeholder="Enter cap" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="mode">Mode</label>
+        <select class="form-control" id="mode">
+          <option value="linear">Linear</option>
+          <option value="linear_inverted">Linear (Inverted)</option>
+          <option value="curve">Curve</option>
+          <option value="inverted_curve">Inverted Curve</option>
+          <option value="mountain">Mountain</option>
+          <option value="mountain_x2">Mountain (X2)</option>
+        </select> 
+      </div>
+    </div>
+    <div class="text-center">
+      <canvas class="mt-2" id="model_rate_canva" width="320" height="320" style="border:1px solid #d3d3d3;"></canvas>
+    </div>
+    <div class="form-group">
+      <label for="temperatures">Temperatures <span id="rate_medium"></span></label>
+      <input type="text" class="form-control" id="temperatures" readonly>
+    </div>
+    <div class="row" id="fine_tuning">
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.min.js" integrity="sha384-Rx+T1VzGupg4BHQYs2gCW9It+akI2MM/mndMCy36UVfodzcJcF0GGLxZIzObiEfa" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+  <script>
+    function sortWithCurve(arr) {
+      arr.sort((a, b) => b - a);
+      var firstArray = [];
+      var secondArray = [];
+      arr.forEach((item, index) => {
+        if (index % 2 == 0) {
+          firstArray.push(item);
+        } else {
+          secondArray.push(item);
+        }
+      });
+      firstArray.sort((a, b) => b - a);
+      secondArray.sort((a, b) => a - b);
+      result = firstArray.concat(secondArray);
+      return result;
+    }
+    function sortWithInvertedCurve(arr){
+      arr.sort((a, b) => b - a);
+      var firstArray = [];
+      var secondArray = [];
+      arr.forEach((item, index) => {
+        if (index % 2 == 0) {
+          firstArray.push(item);
+        } else {
+          secondArray.push(item);
+        }
+      });
+      firstArray.sort((a, b) => a - b);
+      secondArray.sort((a, b) => b - a);
+      result = firstArray.concat(secondArray);
+      return result;
+    }
+    function sortWithMountain(arr) {
+      arr.sort((a, b) => b - a);
+      var firstArray = [];
+      var secondArray = [];
+      var thirdArray = [];
+      var fourthArray = [];
+      arr.forEach((item, index) => {
+        if (index % 4 == 0) {
+          firstArray.push(item);
+        } else if (index % 4 == 1) {
+          secondArray.push(item);
+        } else if (index % 4 == 2) {
+          thirdArray.push(item);
+        } else {
+          fourthArray.push(item);
+        }
+      });
+      firstArray.sort((a, b) => b - a);
+      secondArray.sort((a, b) => a - b);
+      thirdArray.sort((a, b) => b - a);
+      fourthArray.sort((a, b) => a - b);
+      result = firstArray.concat(secondArray, thirdArray, fourthArray);
+      return result;
+    }
+    function sortWithMountainX2(arr){
+      arr.sort((a, b) => b - a);
+      var firstArray = [];
+      var secondArray = [];
+      var thirdArray = [];
+      var fourthArray = [];
+      var fifthArray = [];
+      var sixthArray = [];
+      var seventhArray = [];
+      var eighthArray = [];
+      arr.forEach((item, index) => {
+        if (index % 8 == 0) {
+          firstArray.push(item);
+        } else if (index % 8 == 1) {
+          secondArray.push(item);
+        } else if (index % 8 == 2) {
+          thirdArray.push(item);
+        } else if (index % 8 == 3) {
+          fourthArray.push(item);
+        } else if (index % 8 == 4) {
+          fifthArray.push(item);
+        } else if (index % 8 == 5) {
+          sixthArray.push(item);
+        } else if (index % 8 == 6) {
+          seventhArray.push(item);
+        } else {
+          eighthArray.push(item);
+        }
+      });
+      firstArray.sort((a, b) => b - a);
+      secondArray.sort((a, b) => a - b);
+      thirdArray.sort((a, b) => b - a);
+      fourthArray.sort((a, b) => a - b);
+      fifthArray.sort((a, b) => b - a);
+      sixthArray.sort((a, b) => a - b);
+      seventhArray.sort((a, b) => b - a);
+      eighthArray.sort((a, b) => a - b);
+      result = firstArray.concat(secondArray, thirdArray, fourthArray, fifthArray, sixthArray, seventhArray, eighthArray);
+      return result;
+    }
+
+    $(document).ready(function(){
+      var generate_range_form = function(temp_list){
+        var range_form = "";
+        temp_list.forEach(function(temp, i_temp){
+          range_form += `<div class="col-1">
+                          <div class="temp_container">
+                            <input type="range" class="form-range vertical_range" min="0" max="1" step="0.01" value="${temp}"> 
+                            <input type="text" class="form-control temp_value" value="${temp}">
+                          </div>
+                         </div>`;
+        });
+        $("#fine_tuning").html(range_form);
+        $(".vertical_range").change(function(){
+          var temp_list = [];
+          $(".vertical_range").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).next().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+        $(".temp_value").change(function(){
+          var temp_list = [];
+          $(".temp_value").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).prev().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+        $(".temp_value").keyup(function(){
+          var temp_list = [];
+          $(".temp_value").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).prev().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+      }
+      var update_temp_graph = function(temp_list, num_layers){
+        var ctx = document.getElementById('model_rate_canva').getContext('2d');
+        ctx.clearRect(0, 0, 320, 320)
+        temp_list.forEach((temp,i_temp) => {
+          rect_width = Math.ceil(320/num_layers);
+          rect_x = rect_width*i_temp;
+          rect_y = 320 - Math.round(temp*320);
+          rect_height = Math.round(temp*320);
+          ctx.fillStyle = 'rgb(200, 0, 0)';
+          ctx.fillRect(rect_x, rect_y, rect_width, rect_height);
+        });
+        $("#temperatures").val(temp_list.join(","));
+        var rate_medium = temp_list.reduce((a, b) => a + b, 0) / temp_list.length;
+        rate_medium = Math.round(rate_medium * 100) / 100;
+        $("#rate_medium").text("("+rate_medium+")");
+      }
+      var calcmodel_rate = function(){
+        var num_layers = Number($("#num_layers").val());
+        var model_rate = Number($("#model_rate").val());
+        var mode = $("#mode").val();
+        var cap = Number($("#cap").val());
+        model_rate = 1 - model_rate;
+        model_rate = model_rate * 2;
+        var temp_list = [];
+        for(var i = 0; i < num_layers; i++){
+          var i_ratio = i + cap;
+          if(mode == "curve" || mode == "inverted_curve"){
+            if(i % 2 == 0){
+              var temp_layer = 1 - i_ratio * (model_rate/(num_layers/2)) / 2;
+              temp_layer = Math.floor(temp_layer * 100) / 100;
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+            }
+          }else if(mode =="mountain"){
+            if(i % 4 == 0){
+              var temp_layer = 1 - i_ratio * (model_rate/(num_layers/4)) / 4;
+              temp_layer = Math.floor(temp_layer * 100) / 100;
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+            }
+          }else if(mode == "mountain_x2"){
+            if(i % 8 == 0){
+              var temp_layer = 1 - i_ratio * (model_rate/(num_layers/8)) / 8;
+              temp_layer = Math.floor(temp_layer * 100) / 100;
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+              temp_list.push(temp_layer);
+            }
+          }else{
+            var temp_layer = 1 - i_ratio * (model_rate/num_layers);
+            temp_layer = Math.floor(temp_layer * 100) / 100;
+            temp_list.push(temp_layer);
+          }
+          
+        }
+        console.log(mode);
+        if(mode == "curve"){
+          temp_list = sortWithCurve(temp_list);
+        }else if(mode == "mountain"){
+          temp_list = sortWithMountain(temp_list);
+        }else if(mode == "mountain_x2"){
+          temp_list = sortWithMountainX2(temp_list);
+        }else if(mode == "inverted_curve"){
+          temp_list = sortWithInvertedCurve(temp_list);
+        }else if(mode == "linear_inverted"){
+          temp_list.sort((a, b) => a - b);
+        }
+        update_temp_graph(temp_list, num_layers);
+        generate_range_form(temp_list);
+      };
+      $("#model_rate, #num_layers, #cap").keyup(function(){
+        calcmodel_rate();
+      });
+      $("#model_rate, #num_layers, #cap, #mode").change(function(){
+        calcmodel_rate(); 
+      });
+    });
+  </script>
+</body>
+</html>

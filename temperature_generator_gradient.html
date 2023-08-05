@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layer Temperature Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <style>
+    .container{
+      width: 800px;
+    }
+    .vertical_range {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 10px;
+      padding-left: 16px;
+      height: 70px;
+    }
+    .temp_container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+    input.form-control.temp_value {
+        padding: 0;
+        font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Layer Temperature Generator</h1>
+    <div class="row temp_form">
+      <div class="form-group col-md-6">
+        <label for="layer_start">Layer Start</label>
+        <input type="number" class="form-control" id="layer_start" step="1" placeholder="Enter layer start" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="layer_end">Layer End</label>
+        <input type="number" class="form-control" id="layer_end" step="1" placeholder="Enter layer end" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="gradient_start">Gradient Start</label>
+        <input type="number" class="form-control" id="gradient_start" step="0.01" placeholder="Enter gradient start" value="0">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="gradient_end">Gradient End</label>
+        <input type="number" class="form-control" id="gradient_end" step="0.01" placeholder="Enter gradient end" value="0">
+      </div>
+
+      <div class="form-group col-md-6">
+        <label for="num_layers">Number of layers</label>
+        <input type="number" class="form-control" id="num_layers" placeholder="Enter number of layers" value="0">
+      </div>
+    </div>
+    <div class="text-center">
+      <canvas class="mt-2" id="model_rate_canva" width="320" height="320" style="border:1px solid #d3d3d3;"></canvas>
+    </div>
+    <div class="form-group">
+      <label for="temperatures">Temperatures <span id="rate_medium"></span></label>
+      <input type="text" class="form-control" id="temperatures" readonly>
+    </div>
+    <div class="row" id="fine_tuning">
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.min.js" integrity="sha384-Rx+T1VzGupg4BHQYs2gCW9It+akI2MM/mndMCy36UVfodzcJcF0GGLxZIzObiEfa" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+  <script>
+
+    $(document).ready(function(){
+      var generate_range_form = function(temp_list){
+        var range_form = "";
+        temp_list.forEach(function(temp, i_temp){
+          range_form += `<div class="col-1">
+                          <div class="temp_container">
+                            <input type="range" class="form-range vertical_range" min="0" max="1" step="0.01" value="${temp}"> 
+                            <input type="text" class="form-control temp_value" value="${temp}">
+                          </div>
+                         </div>`;
+        });
+        $("#fine_tuning").html(range_form);
+        $(".vertical_range").change(function(){
+          var temp_list = [];
+          $(".vertical_range").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).next().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+        $(".temp_value").change(function(){
+          var temp_list = [];
+          $(".temp_value").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).prev().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+        $(".temp_value").keyup(function(){
+          var temp_list = [];
+          $(".temp_value").each(function(){
+            temp_list.push(Number($(this).val()));
+            $(this).prev().val($(this).val());
+          });
+          update_temp_graph(temp_list, temp_list.length);
+        });
+      }
+      var update_temp_graph = function(temp_list, num_layers){
+        var ctx = document.getElementById('model_rate_canva').getContext('2d');
+        ctx.clearRect(0, 0, 320, 320)
+        temp_list.forEach((temp,i_temp) => {
+          rect_width = Math.ceil(320/num_layers);
+          rect_x = rect_width*i_temp;
+          rect_y = 320 - Math.round(temp*320);
+          rect_height = Math.round(temp*320);
+          ctx.fillStyle = 'rgb(200, 0, 0)';
+          ctx.fillRect(rect_x, rect_y, rect_width, rect_height);
+        });
+        $("#temperatures").val(temp_list.join(","));
+        var rate_medium = temp_list.reduce((a, b) => a + b, 0) / temp_list.length;
+        rate_medium = Math.round(rate_medium * 100) / 100;
+        $("#rate_medium").text("("+rate_medium+")");
+        localStorage.setItem("temp_list", JSON.stringify(temp_list));
+      }
+      var calcmodel_rate = function(){
+        var num_layers = Number($("#num_layers").val());
+        var gradient_start = Number($("#gradient_start").val());
+        var gradient_end = Number($("#gradient_end").val());
+        var layer_start = Number($("#layer_start").val());
+        var layer_end = Number($("#layer_end").val());
+
+        var temp_list = [];
+        for(var i = 0; i < num_layers; i++){
+          var temp = 0;
+          if(i>=layer_start && i<=layer_end){
+            temp = gradient_start + (gradient_end - gradient_start) * ((i-layer_start) / (layer_end - layer_start));
+            temp = Math.round(temp * 100) / 100;
+          }else if(i<layer_start){
+            temp = gradient_start;
+          }else if(i>layer_end){
+            temp = gradient_end;
+          }
+          temp_list.push(temp);
+        }
+        update_temp_graph(temp_list, num_layers);
+        generate_range_form(temp_list);
+        localStorage.setItem("gradient_info", JSON.stringify({
+          gradient_start: gradient_start,
+          gradient_end: gradient_end,
+          layer_start: layer_start,
+          layer_end: layer_end,
+          num_layers: num_layers
+        }));
+      };
+      $(".temp_form input").keyup(function(){
+        calcmodel_rate();
+      });
+      $(".temp_form input").change(function(){
+        calcmodel_rate(); 
+      });
+      var saved_gradient_info = localStorage.getItem("gradient_info");
+      var saved_temp_list = localStorage.getItem("temp_list");
+      if(saved_gradient_info && saved_temp_list){
+        saved_gradient_info = JSON.parse(saved_gradient_info);
+        saved_temp_list = JSON.parse(saved_temp_list);
+        $("#gradient_start").val(saved_gradient_info.gradient_start);
+        $("#gradient_end").val(saved_gradient_info.gradient_end);
+        $("#layer_start").val(saved_gradient_info.layer_start);
+        $("#layer_end").val(saved_gradient_info.layer_end);
+        $("#num_layers").val(saved_gradient_info.num_layers);
+        update_temp_graph(saved_temp_list, saved_gradient_info.num_layers);
+        generate_range_form(saved_temp_list);
+      }
+    });
+  </script>
+</body>
+</html>
