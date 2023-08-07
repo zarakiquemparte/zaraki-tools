@@ -21,6 +21,16 @@ python3 apply-lora-weight.py --base_model_name_or_path "./base_model/" \
 --cpu_mode
 ```
 
+### Apply Lora Weight per Layer
+
+```
+python3 apply-lora-weight.py --base_model_name_or_path "./base_model/" \
+--peft_model_path "./peft_model/" \
+--peft_model_weights "0.1,0.18,0.25,0.33,0.4,0.48,0.55,0.63,0.7,0.78,0.85,0.93,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" \
+--output_dir "./gpt/hermes-limarp-half-7b" \
+--cpu_mode
+```
+
 ### Multiple apply lora with weight
 
 ```
