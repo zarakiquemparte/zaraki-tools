@@ -25,6 +25,18 @@
         padding: 0;
         font-size: 0.75rem;
     }
+    .first_model {
+        display: inline-block;
+        width: 36px;
+        height: 12px;
+        background: #a6e3a1;
+    }
+    .second_model {
+        display: inline-block;
+        width: 36px;
+        height: 12px;
+        background: #89b4fa;
+    }
   </style>
 </head>
 <body>
@@ -54,7 +66,11 @@
       </div>
     </div>
     <div class="text-center">
-      <canvas class="mt-2" id="model_rate_canva" width="320" height="320" style="border:1px solid #d3d3d3;"></canvas>
+      <canvas class="mt-2" id="model_rate_canva" width="320" height="320" style="border:1px solid #d3d3d3; background: #89b4fa;"></canvas>
+      <div id="legend">
+        <span class="first_model"></span> <span class="first_model_text">First model</span>
+        <span class="second_model"></span> <span class="second_model_text">Second model</span>
+      </div>
     </div>
     <div class="form-group">
       <label for="temperatures">Temperatures <span id="rate_medium"></span></label>
@@ -116,7 +132,7 @@
           rect_x = rect_width*i_temp;
           rect_y = 320 - Math.round(temp*320);
           rect_height = Math.round(temp*320);
-          ctx.fillStyle = 'rgb(200, 0, 0)';
+          ctx.fillStyle = 'rgb(166, 227, 161)';
           ctx.fillRect(rect_x, rect_y, rect_width, rect_height);
         });
         $("#temperatures").val(temp_list.join(","));
