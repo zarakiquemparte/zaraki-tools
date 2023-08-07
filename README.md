@@ -21,7 +21,7 @@ python3 apply-lora-weight.py --base_model_name_or_path "./base_model/" \
 --cpu_mode
 ```
 
-### Apply Lora Weight per Layer
+### Apply Lora with weight per Layer
 
 ```
 python3 apply-lora-weight.py --base_model_name_or_path "./base_model/" \
