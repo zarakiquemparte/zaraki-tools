@@ -1,19 +1,20 @@
 import os
 import shutil
 from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaConfig
+from peft import PeftModel
 import torch
 import argparse
+from huggingface_hub import HfApi, login
 import json
 
 # Based on https://github.com/TehVenomm/LM_Transformers_BlockMerge/blob/main/LM_BlockMerge.py
-
 #mixer output settings
 
 fp16 = True                 #perform operations in fp16. Saves memory, but CPU inference will not be possible.
 always_output_fp16 = True   #if true, will output fp16 even if operating in fp32
 max_shard_size = "8000MiB"  #set output shard size
 verbose_info = True        #will show model information when loading
-force_cpu = False            #only use cpu
+force_cpu = True            #only use cpu
 
 
 def get_args():
@@ -22,6 +23,10 @@ def get_args():
     parser.add_argument("--second_model_path", type=str)
     parser.add_argument("--merged_model_path", type=str)
     parser.add_argument("--merge_ratios", type=str)
+    parser.add_argument("--low_ram", action="store_true")
+    parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--cpu_mode", action="store_true")
+    parser.add_argument("--lora_path", type=str, default=None)
     return parser.parse_args()
 
 args = get_args()
@@ -29,26 +34,30 @@ first_model_path  = args.first_model_path
 second_model_path = args.second_model_path
 merged_model_path = args.merged_model_path
 merge_ratios_list = args.merge_ratios
+low_ram = args.low_ram
+lora_path = args.lora_path
+
+device_arg = { 'device_map': torch.device("cpu") }
 
 with torch.no_grad(): 
-    if fp16:
-        torch.set_default_dtype(torch.float16)
-    else:
-        torch.set_default_dtype(torch.float32)
 
-    device = torch.device("cuda") if (torch.cuda.is_available() and not force_cpu) else torch.device("cpu")
-    print(device)
+    if args.device == 'auto':
+        device_arg = { 'device_map': 'auto' }
+    else:
+        device_arg = { 'device_map': { "": args.device} }
+
+    if args.cpu_mode:
+        device_arg = { 'device_map': torch.device("cpu") }
+
     
     # Load the first and second models
     print("Loading Model 1...")
-    first_model = AutoModelForCausalLM.from_pretrained(first_model_path)
-    first_model = first_model.to(device)
+    first_model = AutoModelForCausalLM.from_pretrained(first_model_path, torch_dtype=torch.float16, low_cpu_mem_usage=low_ram, **device_arg)
     first_model.eval()
     print("Model 1 Loaded. Dtype: " + str(first_model.dtype))
     
     print("Loading Model 2...")
-    second_model = AutoModelForCausalLM.from_pretrained(second_model_path)
-    second_model = second_model.to(device)
+    second_model = AutoModelForCausalLM.from_pretrained(second_model_path, torch_dtype=torch.float16, low_cpu_mem_usage=low_ram, **device_arg)
     second_model.eval()
     print("Model 2 Loaded. Dtype: " + str(second_model.dtype))
     
@@ -61,7 +70,7 @@ with torch.no_grad():
 # Create a "commit and merge" button
 
 def merge_models():
-    global first_model, second_model, num_layers, merge_ratios_list, verbose_info, device, merged_model_path, first_model_path, always_output_fp16, max_shard_size, args
+    global first_model, second_model, num_layers, merge_ratios_list, verbose_info, device, merged_model_path, first_model_path, always_output_fp16, max_shard_size, args, lora_path
 
     with torch.no_grad():
         # Read the merge ratios from the sliders
@@ -149,17 +158,29 @@ def merge_models():
             newsavedpath = merged_model_path + "/"
             #copies necessary files from the first selected model folder into the merged model folder
 # Define a list of the files to copy
-            files_to_copy = ["special_tokens_map.json", "tokenizer_config.json", "vocab.json", "merges.txt"]
-# Copy each file to the new folder
-            for filename in files_to_copy:
-                src_path = f"{first_model_path}/{filename}"
-                dst_path = f"{merged_model_path}/{filename}"
-                try:
-                    shutil.copy2(src_path, dst_path)
-                except FileNotFoundError:
-                    print("\nFile " + filename + " not found in" + first_model_path + ". Skipping.")
+            tokenizer = AutoTokenizer.from_pretrained(first_model_path, use_fast=True)
+            tokenizer.save_pretrained(newsavedpath)
+            
+#             files_to_copy = ["special_tokens_map.json", "tokenizer_config.json", "vocab.json", "merges.txt", "added_tokens.json", "config.json"]
+# # Copy each file to the new folder
+#             for filename in files_to_copy:
+#                 src_path = f"{first_model_path}/{filename}"
+#                 dst_path = f"{merged_model_path}/{filename}"
+#                 try:
+#                     shutil.copy2(src_path, dst_path)
+#                 except FileNotFoundError:
+#                     print("\nFile " + filename + " not found in" + first_model_path + ". Skipping.")
             if always_output_fp16 and not fp16:
                 second_model.half()
+
+            if lora_path:
+                print("Loading LORA...")
+                second_model = PeftModel.from_pretrained(second_model, lora_path, torch_dtype=torch.float16, low_cpu_mem_usage=low_ram, **device_arg)
+                print("LORA Loaded. Dtype: " + str(second_model.dtype))
+                print("Merge and unload")
+                second_model = second_model.merge_and_unload()
+                print("Merged and unloaded. Dtype: " + str(second_model.dtype))
+                
 
             second_model.save_pretrained(newsavedpath, max_shard_size=max_shard_size)
             print("\nSaved to: " + newsavedpath)
@@ -171,5 +192,5 @@ def merge_models():
 print(f"Loaded {first_model_path} and {second_model_path}")
 print(f"Ratios:\n{merge_ratios_list}")
 print(f"Output path: {merged_model_path}")
-input("\n Press Enter to continue...")
+# input("\n Press Enter to continue...")
 merge_models()
